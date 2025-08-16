@@ -1,27 +1,22 @@
 package com.example.fastfruit
 
 import android.os.Bundle
+import android.os.CountDownTimer
 import android.os.Handler
 import android.os.Looper
 import android.view.View
 import android.widget.ImageView
+import android.widget.TextView
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.isVisible
 import java.time.ZonedDateTime
 
 class GameScreen : AppCompatActivity() {
 
     private lateinit var imageButtons: List<ImageView>
     private lateinit var frutasEmJogo: MutableList<Int>
-    private var frutaAtual: Int = 0
-    private var nivel: Int = 3
-    private var acertos: Int = 0
-    private var totalAcertos: Int = 0
-    var sessaoCompleta: Boolean = false
-    private var errosConsecutivos = 0
 
-    private var frutasRodadaAtual: List<Int>? = null  // <- Variável persistente para frutas da rodada
-    private var seed: Long = 123456L // <- Pode ser dinâmica, compartilhada entre dispositivos
 
     private val frutas = arrayOf(
         0 to R.drawable.apple, 1 to R.drawable.banana, 2 to R.drawable.cherry, 3 to R.drawable.coconut,
@@ -36,10 +31,6 @@ class GameScreen : AppCompatActivity() {
     private lateinit var frutasDestaqueS: ArrayList<Int>
     private var rodada = 0
 
-    private lateinit var tirar: ImageView
-
-
-    private var flag = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -105,31 +96,11 @@ class GameScreen : AppCompatActivity() {
     }
 
     private fun verificarNivel() {
-        if (acertos == 11) {
-            nivel++
-            if (nivel == 4) {
-                sessaoCompleta = true
-            }
-            acertos = 0
-            resetarJogo()
+        println("chegou")
+        client.finishListener { placar ->
+            val dialog = PlacarDialogFragment.fromString(placar)
+            dialog.show(supportFragmentManager, "dialogPlacar")
         }
-    }
-
-    private fun resetarJogo() {
-        frutasRodadaAtual = null // <- limpa para gerar novas frutas na próxima rodada
-        frutasEmJogo = frutasServer.toMutableList()
-        acertos = 0
-        client.sendStartGame_OK ()
-        definirImagemDestaque(frutasDestaqueS[1])
-        setContentView(R.layout.activity_game_screen_nivel_three)
-        posicionarImagens()
-        jogar()
-    }
-
-    private fun acerto() {
-        totalAcertos++
-        acertos++
-        errosConsecutivos = 0
     }
 
     private fun jogar() {
@@ -137,12 +108,29 @@ class GameScreen : AppCompatActivity() {
 
         client.startListener {
             runOnUiThread {
-                acerto()
-                verificarNivel()
-                var index = aux.indexOf(frutasDestaqueS[rodada])
-                removerImagem(imageButtons[index], frutasDestaqueS[rodada])
-                rodada++
-                definirImagemDestaque(frutasDestaqueS[rodada])
+                val countdownText = findViewById<TextView>(R.id.countdownText)
+
+                countdownText.visibility = View.VISIBLE // aparece
+
+                object : CountDownTimer(4000, 1000) {
+                    override fun onTick(millisUntilFinished: Long) {
+                        val seconds = (millisUntilFinished / 1000).toInt()
+                        countdownText.text = if (seconds > 0) "$seconds" else "GO!"
+                    }
+
+                    override fun onFinish() {
+                        val index = aux.indexOf(frutasDestaqueS[rodada])
+                        removerImagem(imageButtons[index], frutasDestaqueS[rodada])
+                        rodada++
+                        if (rodada < 3){
+                            definirImagemDestaque(frutasDestaqueS[rodada])
+                        } else verificarNivel()
+
+                        countdownText.postDelayed({
+                            countdownText.visibility = View.GONE
+                        }, 1000)
+                    }
+                }.start()
             }
         }
 

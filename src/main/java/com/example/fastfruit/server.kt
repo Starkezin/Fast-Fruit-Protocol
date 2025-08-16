@@ -17,6 +17,8 @@ fun main() {
     println("FRUTAS DESTAQUE: $frutasDestaque")
     var rodada = 0
 
+    val acertosPorPlayer = mutableMapOf<Int,Int>()
+
 
     val serverSocket = ServerSocket(12345)
     println("Servidor rodando na porta 12345...")
@@ -28,6 +30,10 @@ fun main() {
     while (true) {
         val clientSocket = serverSocket.accept()
         val id = nextId++
+        synchronized(acertosPorPlayer){
+            acertosPorPlayer[id] = 0
+        }
+
         println("Novo cliente conectado!, $id")
 
         thread {
@@ -41,11 +47,6 @@ fun main() {
                     val mensagem = reader.readLine() ?: break
 
                     when (mensagem) {
-                        "HELLO" -> {
-                            // Aqui envia texto, pois cliente usa readLine()
-                            oos.writeObject("HELLOOK")
-                            oos.flush()
-                        }
                         "READY" -> {
                             println("READY CHEGOU!")
                             numPlayersConnected++
@@ -73,15 +74,11 @@ fun main() {
                             println("SENDFRUIT FROM JOGADOR, $id")
 
                             if(msg == frutasDestaque[rodada]){
-                                rodada++
-                                if(rodada == 11){
-                                    synchronized(clients) {
-                                        clients.values.forEach { out ->
-                                            out.writeObject("GAMEFINISH|")
-                                            out.flush()
-                                        }
-                                    }
+
+                                synchronized(acertosPorPlayer){
+                                    acertosPorPlayer[id] = acertosPorPlayer.getOrDefault(id, 0) + 1
                                 }
+
                                 println("$rodada")
                                 synchronized(clients) {
                                     clients.values.forEach { out ->
@@ -89,9 +86,29 @@ fun main() {
                                         out.flush()
                                     }
                                 }
+
+                                println("Placar:")
+                                acertosPorPlayer.forEach { (id, acertos) ->
+                                    println("Jogador $id -> $acertos acertos")
+                                }
+                                rodada++
+                                if(rodada >= 3){
+                                    println("aqui")
+                                    val placar = acertosPorPlayer.entries.joinToString("\n") { (id, pontos) ->
+                                        "Player $id: $pontos"
+                                    }
+                                    synchronized(clients){
+                                        clients.values.forEach { out ->
+                                            out.writeObject("GAMEFINISH")
+                                            out.writeObject(placar)
+                                            out.flush()
+                                        }
+                                    }
+                                }
+
                             }
                             else {
-                                println("Errou!!!!")
+                                println("Jogador $id Errou!!!!")
                             }
                         }
                     }

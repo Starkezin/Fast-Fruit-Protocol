@@ -1,5 +1,6 @@
 package com.example.fastfruit
 
+import androidx.appcompat.app.AppCompatActivity
 import java.io.ObjectInputStream
 import java.io.PrintWriter
 import java.net.Socket
@@ -31,16 +32,6 @@ class Client(private val host: String = "192.168.8.23", private val port: Int = 
         }.start()
     }
 
-    fun test(){
-        writer.println("Olá, servidor!")
-        //socketCliente.close()
-        println("Servidor respondeu: ${reader.readLine()}")
-    }
-    fun sendHello(){
-        writer.println("HELLO")
-        println("Servidor respondeu: ${reader.readLine()}")
-    }
-
     fun sendReady(onGameStart: (List<Int>, List<Int>) -> Unit) {
         if (!isConnected) return
         Thread {
@@ -57,6 +48,15 @@ class Client(private val host: String = "192.168.8.23", private val port: Int = 
         }.start()
     }
 
+    fun enviarClickParaServidor(index: Int) {
+        Thread {
+            writer.println("SENDFRUIT")
+            writer.flush()
+            writer.println(index)
+            writer.flush()
+        }.start()
+    }
+
     fun startListener(onAcerto: () -> Unit){
         Thread{
             while(true){
@@ -68,13 +68,14 @@ class Client(private val host: String = "192.168.8.23", private val port: Int = 
         }.start()
     }
 
-    fun enviarClickParaServidor(index: Int) {
-        Thread {
-            writer.println("SENDFRUIT")
-            writer.flush()
-            writer.println(index)
-        }.start()
+    fun finishListener(onFinish: (String) -> Unit) {
+        while (true) {
+            val msg = ois.readObject()
+            println("ta $msg")
+            if (msg is String && msg == "GAMEFINISH") { val placarObj = ois.readObject().toString()
+                onFinish(placarObj)
+            }
+        }
     }
-
 
 }
