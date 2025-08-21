@@ -95,50 +95,50 @@ class GameScreen : AppCompatActivity() {
         }, 100)
     }
 
-    private fun verificarNivel() {
-        println("chegou")
-        client.finishListener { placar ->
-            val dialog = PlacarDialogFragment.fromString(placar)
-            dialog.show(supportFragmentManager, "dialogPlacar")
-        }
-    }
 
     private fun jogar() {
         val aux = frutasEmJogo.toList()
 
-        client.startListener {
-            runOnUiThread {
-                val countdownText = findViewById<TextView>(R.id.countdownText)
+        client.startListener(
+            onMessage = { msg ->
+                runOnUiThread {
+                    val index = frutasEmJogo.indexOf(frutasDestaqueS[rodada])
+                    removerImagem(imageButtons[index], frutasDestaqueS[rodada])
 
-                countdownText.visibility = View.VISIBLE // aparece
+                    val countdownText = findViewById<TextView>(R.id.countdownText)
 
-                object : CountDownTimer(4000, 1000) {
-                    override fun onTick(millisUntilFinished: Long) {
-                        val seconds = (millisUntilFinished / 1000).toInt()
-                        countdownText.text = if (seconds > 0) "$seconds" else "GO!"
+                    countdownText.visibility = View.VISIBLE
+                    if (rodada < 3) {
+                        object : CountDownTimer(4000, 1000) {
+                            override fun onTick(millisUntilFinished: Long) {
+                                val seconds = (millisUntilFinished / 1000).toInt()
+                                countdownText.text = if (seconds > 0) "$seconds" else "GO!"
+                            }
+
+                            override fun onFinish() {
+                                rodada++
+                                definirImagemDestaque(frutasDestaqueS[rodada])
+
+                                countdownText.postDelayed({
+                                    countdownText.visibility = View.GONE
+                                }, 1000)
+                            }
+                        }.start()
                     }
-
-                    override fun onFinish() {
-                        val index = aux.indexOf(frutasDestaqueS[rodada])
-                        removerImagem(imageButtons[index], frutasDestaqueS[rodada])
-                        rodada++
-                        if (rodada < 3){
-                            definirImagemDestaque(frutasDestaqueS[rodada])
-                        } else verificarNivel()
-
-                        countdownText.postDelayed({
-                            countdownText.visibility = View.GONE
-                        }, 1000)
-                    }
-                }.start()
+                }
+            },
+            onFinish = { placar ->
+                runOnUiThread {
+                    val dialog = PlacarDialogFragment.fromString(placar)
+                    dialog.show(supportFragmentManager, "dialogPlacar")
+                }
             }
-        }
+        )
 
         imageButtons.forEachIndexed { index, image ->
             image.setOnClickListener {
                 val frutaClicada = aux[index]
                 client.enviarClickParaServidor(frutaClicada)
-
             }
         }
     }

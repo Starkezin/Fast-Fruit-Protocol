@@ -11,14 +11,12 @@ import kotlin.random.Random
 fun main() {
     val totalFrutas = 22
     val qtdSelecionadas = 16
-    val frutasSorteadas = (0 until totalFrutas).shuffled().take(qtdSelecionadas)
-    println("FRUTAS: $frutasSorteadas")
-    val frutasDestaque = frutasSorteadas.shuffled().take(11)
-    println("FRUTAS DESTAQUE: $frutasDestaque")
+    var frutasSorteadas = (0 until totalFrutas).shuffled().take(qtdSelecionadas)
+    var frutasDestaque = frutasSorteadas.shuffled().take(11)
+
     var rodada = 0
 
     val acertosPorPlayer = mutableMapOf<Int,Int>()
-
 
     val serverSocket = ServerSocket(12345)
     println("Servidor rodando na porta 12345...")
@@ -53,6 +51,15 @@ fun main() {
                             println("Jogadores prontos: $numPlayersConnected")
 
                             if (numPlayersConnected == 2) {
+                                frutasSorteadas = (0 until totalFrutas).shuffled().take(qtdSelecionadas)
+                                println("FRUTAS: $frutasSorteadas")
+                                frutasDestaque = frutasSorteadas.shuffled().take(11)
+                                println("FRUTAS DESTAQUE: $frutasDestaque")
+
+                                rodada = 0 // resetar rodada para nova partida
+                                synchronized(acertosPorPlayer) {
+                                    acertosPorPlayer.keys.forEach { acertosPorPlayer[it] = 0 }
+                                }
                                 println("Todos prontos, enviando frutas...")
                                 numPlayersConnected = 0
                                 synchronized(clients) {
@@ -116,10 +123,9 @@ fun main() {
             } catch (e: Exception) {
                 println("Erro com cliente: ${e.message}")
             } finally {
-                synchronized(clients) { clients.values.remove(oos) }
+                synchronized(clients) { clients.remove(id) }
                 clientSocket.close()
-                numPlayersConnected = 0
-                println("Cliente desconectado, jogadores: $numPlayersConnected")
+                println("Cliente $id desconectado, ainda conectados: ${clients.size}")
             }
         }
     }

@@ -57,25 +57,23 @@ class Client(private val host: String = "192.168.8.23", private val port: Int = 
         }.start()
     }
 
-    fun startListener(onAcerto: () -> Unit){
-        Thread{
-            while(true){
+    fun startListener(onMessage: (String) -> Unit, onFinish: (String) -> Unit) {
+        Thread {
+            while (true) {
                 val msg = ois.readObject()
-                if (msg is String && msg == "RIGHTANSWER"){
-                    onAcerto()
+                if (msg is String) {
+                    when {
+                        msg == "GAMEFINISH" -> {
+                            val placar = ois.readObject().toString()
+                            onFinish(placar)
+                        }
+                        else -> {
+                            onMessage(msg)
+                        }
+                    }
                 }
             }
         }.start()
-    }
-
-    fun finishListener(onFinish: (String) -> Unit) {
-        while (true) {
-            val msg = ois.readObject()
-            println("ta $msg")
-            if (msg is String && msg == "GAMEFINISH") { val placarObj = ois.readObject().toString()
-                onFinish(placarObj)
-            }
-        }
     }
 
 }
